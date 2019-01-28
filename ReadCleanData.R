@@ -48,12 +48,12 @@ missing <- dat.train %>%
 
 dat.train <- dat.train[!colnames(dat.train)%in%colnames(missing)]
 
-missing <- apply(missing, 1, function(x) as.character(x))
+missing[] <- lapply(missing, as.character)
 missing[is.na(missing)] <- "none"
-missing <- apply(missing, 1, function(x) as.factor(x))
+missing[] <- lapply(missing, as.factor)
 
 #think its in the same orde, bas code you can clean :)
-dat.train <- cbind(dat.train, missing)
+dat.train <- bind_cols(dat.train, data.frame(missing))
 
 
 # these are trule missing?
@@ -71,6 +71,11 @@ table(lotFront = is.na(dat.train$LotFrontage), lotArea = dat.train$LotArea>0)
 system("grep Mas data/data_description.txt")
 table(is.na(dat.train$MasVnrArea), dat.train$MasVnrType)
 # where is this ?? dat.train$MasVnrType
+
+
+aggr(dat.train %>%
+       select_if(function(x) any(is.na(x))),
+     numbers = TRUE, prop = c(TRUE, FALSE))
 
 
 
