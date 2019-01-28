@@ -79,6 +79,7 @@ aggr(dat.train %>%
 
 
 
+
 # so we will impute LotFrontage and MasVnrArea?
 # GarageYrBlt must be dealt with
 
