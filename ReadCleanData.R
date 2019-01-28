@@ -37,28 +37,45 @@ aggr(missing, numbers = TRUE, prop = c(TRUE, FALSE))
 # Alley
 system("grep -A 5 Alley data/data_description.txt")
 # looks like the missing ally means none, so lets change it to "none" for now
-class(dat.train$Alley)
-dat.train$Alley <- as.character(dat.train$Alley); dat.train$Alley[is.na(dat.train$Alley)] <- "none"
 
-# FireplaceQu
-system("grep -A 8 FireplaceQu data/data_description.txt")
-# looks like the missing ally means none, so lets change it to "none" for now
-class(dat.train$FireplaceQu)
-unique(dat.train$FireplaceQu)
-dat.train$FireplaceQu <- as.character(dat.train$FireplaceQu); dat.train$FireplaceQu[is.na(dat.train$FireplaceQu)] <- "none"
-table(dat.train$FireplaceQu)
-# will get to reordering and making thing nice later on, lets do NAs for now
+# Lets see all
+system("grep NA data/data_description.txt")
 
-# PoolQC
-system("grep -A 8 FireplaceQu data/data_description.txt")
+# so all missing that are factor are none
+missing <- dat.train %>%
+  select_if(function(x) any(is.na(x)))%>%
+  select_if(function(x) is.factor(x))
 
-# Fence
-system("grep -A 8 FireplaceQu data/data_description.txt")
+dat.train <- dat.train[!colnames(dat.train)%in%colnames(missing)]
 
-# MiscFeature
-system("grep -A 8 FireplaceQu data/data_description.txt")
+missing <- apply(missing, 1, function(x) as.character(x))
+missing[is.na(missing)] <- "none"
+missing <- apply(missing, 1, function(x) as.factor(x))
+
+#think its in the same orde, bas code you can clean :)
+dat.train <- cbind(dat.train, missing)
 
 
-# Lets chuck greater than 20% misingness (we probably going to use techniques that cant handel missing data easy)
+# these are trule missing?
+colnames(dat.train %>%
+       select_if(function(x) any(is.na(x))))
+
+system("grep -A 2 -B 2 GarageYrBlt data/data_description.txt")
+table(is.na(dat.train$GarageYrBlt), dat.train$GarageCars==0)
+#so this isnt there as they is no garage
+
+system("grep LotFrontage data/data_description.txt")
+table(lotFront = is.na(dat.train$LotFrontage), lotArea = dat.train$LotArea>0)
+# ah, one truley missing! Lets impute this later
+
+system("grep Mas data/data_description.txt")
+table(is.na(dat.train$MasVnrArea), dat.train$MasVnrType)
+# where is this ?? dat.train$MasVnrType
+
+
+
+
+
+
 
 ################
