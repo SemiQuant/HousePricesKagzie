@@ -83,6 +83,17 @@ aggr(dat.train %>%
 # so we will impute LotFrontage and MasVnrArea?
 # GarageYrBlt must be dealt with
 
+#something like this - thinking just using the Lot data for the lot imputation?
+require(mice)
+methods(mice)
+tempData <- mice(dat.train[grepl("Lot", colnames(dat.train))], m=5, maxit=50, meth='cart', seed=1987)
+summary(tempData)
+densityplot(tempData)
+stripplot(tempData, pch = 20, cex = 1.2)
+
+completedData <- complete(tempData, 2)
+table(is.na(completedData))
+dim(completedData)
 
 
 
