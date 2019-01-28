@@ -49,7 +49,7 @@ missing <- dat.train %>%
 dat.train <- dat.train[!colnames(dat.train)%in%colnames(missing)]
 
 missing[] <- lapply(missing, as.character)
-missing[is.na(missing)] <- "none"
+missing[is.na(missing)] <- "None"
 missing[] <- lapply(missing, as.factor)
 
 #think its in the same orde, bas code you can clean :)
@@ -70,7 +70,29 @@ table(lotFront = is.na(dat.train$LotFrontage), lotArea = dat.train$LotArea>0)
 
 system("grep Mas data/data_description.txt")
 table(is.na(dat.train$MasVnrArea), dat.train$MasVnrType)
-# where is this ?? dat.train$MasVnrType
+
+aggr(dat.train %>%
+       select_if(function(x) any(is.na(x))),
+     numbers = TRUE, prop = c(TRUE, FALSE))
+
+
+# so we will impute LotFrontage
+# GarageYrBlt and MasVnrArea must be dealt with but not imputed
+
+#something like this - thinking just using the Lot data for the lot imputation?
+require(mice)
+methods(mice)
+tempData <- mice(dat.train[grepl("Lot", colnames(dat.train))], m=5, maxit=50, meth='cart', seed=1987)
+summary(tempData)
+densityplot(tempData)
+stripplot(tempData, pch = 20, cex = 1.2)
+
+completedData <- complete(tempData, 2)
+table(is.na(completedData))
+dim(completedData)
+
+dat.train$LotFrontage <- completedData$LotFrontage
+
 
 
 aggr(dat.train %>%
@@ -78,13 +100,11 @@ aggr(dat.train %>%
      numbers = TRUE, prop = c(TRUE, FALSE))
 
 
-
-
-# so we will impute LotFrontage and MasVnrArea?
-# GarageYrBlt must be dealt with
-
-
-
-
-
 ################
+
+
+##################
+## Make dummies ##
+
+##################
+
