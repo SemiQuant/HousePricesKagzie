@@ -1,6 +1,9 @@
 # Load packages and set some things up #
 require(doParallel)
 set.seed(1987)
+cl <- makePSOCKcluster(detectCores()-2)
+registerDoParallel(cl)
+
 require(tidyverse)
 require(VIM)
 require(corrplot)
@@ -22,7 +25,6 @@ system("cat data/data_description.txt")
 
 
 # head(read.csv("data/sample_submission.csv"))
-
 colnames(dat.train)[!colnames(dat.train)%in%colnames(dat.test)]
 y.train <- dat.train$SalePrice
 dat.train <- dat.train[colnames(dat.train)!="SalePrice"]
@@ -151,11 +153,11 @@ corrplot.mixed(dat.train.cor, lower.col = "black", number.cex = .7)
 
 
 # Zero- and Near Zero-Variance Predictors
-nzv <- nearZeroVar(dat)
+nzv <- nearZeroVar(dat.train)
 
 # Linear Dependencies
 # QR decomposition of a matrix to enumerate sets of linear combinations (if they exist)
-comboInfo <- findLinearCombos(dat)
+comboInfo <- findLinearCombos(dat.train)
 
 
 
@@ -183,10 +185,12 @@ comboInfo <- findLinearCombos(dat)
 
 ################
 ## preProcess ##
-# preProcValues <- preProcess(dat, method = c("center", "scale", "knnImpute"))
-# dat <- predict(preProcValues, dat)
+preProcValues <- preProcess(dat, method = c("center", "scale")) #, "knnImpute"
+dat.train <- predict(preProcValues, dat.train)
 # testTransformed <- predict(preProcValues, test)
+
 lets use caret for this
+
 ################
 
 
@@ -196,8 +200,61 @@ lets use caret for this
 ## Trianing the Model ##
 lets use caret for this
 ########################
+## Trianing the Model ##
+set.seed(1987)
+trnCtrl.rf <- trainControl(
+  method = "repeatedcv", ## CV #methods = "boot", "cv", "LOOCV", "LGOCV", "repeatedcv", "timeslice", "none" and "oob"
+  number = 10, ## 10 folds
+  repeats = 10,## repeated ten times
+  verbose = F,
+  allowParallel = T
+  # search = "random"
+)
+
+
+# Alternate Tuning Grids
+grid.rf <- expand.grid(mtry = c(2, 3, 4, 5, 6),
+                       splitrule = c("gini", "extratrees"),
+                       min.node.size = c(1, 3, 5))
+nrow(grid.rf)
+
+# gradient boosting machine
+fit.rf <- train(y.train ~ .,
+                data = dat.train,
+                method = "rf",
+                trControl = trnCtrl.rf,
+                verbose = FALSE,
+                metric = "RMSE"
+                # tuneLength = 2
+                # tuneGrid = grid.rf
+)
+fit.rf
+plot(fit.rf)
+densityplot(fit.rf, pch = "|")
+fit.rf$finalModel
+
+
+# Variable Importance
+fit.rf.Imp <- varImp(fit.rf$finalModel, scale = FALSE)
+fit.rf.Imp
+plot(fit.rf.Imp)
+
+
+
+
+########################
 
 #################
 ## EVALUATIONS ##
 lets use caret for this
+
+# Measures for Predicted Classes
+youll need to transform the test set same as you did the train
+
+predict(fit.rf, newdata = dat.train)
+(mod.probs=predict(fit.rf, newdata = dat.train, type = "prob"))
+
+
+# make some plots
+
 #################
