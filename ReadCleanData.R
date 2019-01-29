@@ -1,3 +1,13 @@
+# Load packages and set some things up #
+require(doParallel)
+set.seed(1987)
+require(tidyverse)
+require(VIM)
+require(corrplot)
+require(mice)
+require(caret)
+
+
 ##################
 ## read in data ##
 # from Kaggle https://www.kaggle.com/c/house-prices-advanced-regression-techniques
@@ -22,11 +32,11 @@ table(colnames(dat.train)%in%colnames(dat.test))
 ################
 ## Misingness ##
 
-require(tidyverse)
+# require(tidyverse)
 missing <- dat.train %>%
   select_if(function(x) any(is.na(x)))
 
-require(VIM)
+# require(VIM)
 aggr(missing, numbers = TRUE, prop = c(TRUE, FALSE))
 
 (to_rem <- dat.train %>%
@@ -80,7 +90,7 @@ aggr(dat.train %>%
 # GarageYrBlt and MasVnrArea must be dealt with but not imputed
 
 #something like this - thinking just using the Lot data for the lot imputation?
-require(mice)
+# require(mice)
 methods(mice)
 tempData <- mice(dat.train[grepl("Lot", colnames(dat.train))], m=5, maxit=50, meth='cart', seed=1987)
 summary(tempData)
@@ -93,29 +103,140 @@ dim(completedData)
 
 dat.train$LotFrontage <- completedData$LotFrontage
 
-#something like this - thinking just using the Lot data for the lot imputation?
-require(mice)
-methods(mice)
-tempData <- mice(dat.train[grepl("Lot", colnames(dat.train))], m=5, maxit=50, meth='cart', seed=1987)
-summary(tempData)
-densityplot(tempData)
-stripplot(tempData, pch = 20, cex = 1.2)
-
-completedData <- complete(tempData, 2)
-table(is.na(completedData))
-dim(completedData)
-
 
 aggr(dat.train %>%
        select_if(function(x) any(is.na(x))),
      numbers = TRUE, prop = c(TRUE, FALSE))
 
+dat.train <- dat.train[-c(1)]
 
 ################
 
 
+
+
+
+
+
+
+everything below I jsut took from some of my other scripts, havent changed anything yet
+
+
+
+
+
+
+
+
+##########################
+## Exploratory Analysis ##
+# require(caret)
+# these are supposed to be ugly and quick
+
+# feat plot
+featurePlot(x = dat.train,
+            y = y.train,
+            plot = "pairs",
+            ## Add a key at the top
+            auto.key = list(columns = 3)
+)
+
+# desnity plots
+transparentTheme(trans = .9)
+featurePlot(x = dat[, 13:15],
+            y = dat$Class,
+            plot = "density",
+            ## Pass in options to xyplot() to
+            ## make it prettier
+            scales = list(x = list(relation="free"),
+                          y = list(relation="free")),
+            adjust = 1.5,
+            pch = "|",
+            layout = c(4, 1),
+            auto.key = list(columns = 3)
+)
+
+
+# box plots
+featurePlot(x = dat[, 13:15],
+            y = dat$Class,
+            ## Pass in options to bwplot()
+            scales = list(y = list(relation="free"),
+                          x = list(rot = 90)),
+            layout = c(4,1 ),
+            auto.key = list(columns = 2))
+
+
+# scatter
+theme1 <- trellis.par.get()
+theme1$plot.symbol$col = rgb(.2, .2, .2, .4)
+theme1$plot.symbol$pch = 16
+theme1$plot.line$col = rgb(1, 0, 0, .7)
+theme1$plot.line$lwd <- 2
+trellis.par.set(theme1)
+featurePlot(x = dat[, 13:15],
+            y = as.numeric(dat$Class),
+            plot = "scatter",
+            type = c("p", "smooth"),
+            span = .5,
+            layout = c(3, 1))
+
+
+
+# Zero- and Near Zero-Variance Predictors
+nzv <- nearZeroVar(dat)
+
+# Identifying Correlated Predictors
+# require(corrplot)
+M <- cor(mtcars)
+corrplot.mixed(M, lower.col = "black", number.cex = .7)
+
+# Linear Dependencies
+# QR decomposition of a matrix to enumerate sets of linear combinations (if they exist)
+comboInfo <- findLinearCombos(dat)
+
+
+
+
+
+##########################
+
+
+
+
+
 ##################
-## Make dummies ##
+## Make Dummies ##
 
 ##################
 
+
+
+
+#########################
+## Feature Engineering ##
+
+#########################
+
+
+################
+## preProcess ##
+# preProcValues <- preProcess(dat, method = c("center", "scale", "knnImpute"))
+# dat <- predict(preProcValues, dat)
+# testTransformed <- predict(preProcValues, test)
+
+#Imputation
+# method = c("knnImpute", "center", "scale")
+################
+
+
+
+
+########################
+## Trianing the Model ##
+
+########################
+
+#################
+## EVALUATIONS ##
+#################
