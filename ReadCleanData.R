@@ -179,8 +179,10 @@ comboInfo <- findLinearCombos(dat.train)
 
 
 
-#########################
 ## Feature Engineering ##
+dat.train %>% mutate(YrOld = YrSold - YearBuilt,
+                     YrOldReno = YrSold - YearRemodAdd,
+                     YrGar = YrSold - GarageYrBlt) -> dat.train
 
 #########################
 
