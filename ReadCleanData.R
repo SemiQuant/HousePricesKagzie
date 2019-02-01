@@ -182,10 +182,34 @@ kurtosis(log(y.train))
 
 # Skewness seems like less of a problem than kurtosis. skew should be 0 kurt should be 3. We can look at box-cox transform or ignore because its at least approx normal and review residuals or regression.
 
+# Lets see what a basic linear model from stepwise regression looks like:
 
+# library(leaps)
 
+all.data <- cbind(y = y.train, dat.train[ ,-1])
 
+lm(y ~ ., data = all.data)
 
+# Something wrong with one or more variables. Lets find it.
+
+univariate_lm <- lapply(dat.train[, -1], function(x){
+  lm(y.train ~ x)
+})
+univariate_lm
+
+# They all seem to run fine as univariate regressions...
+# Except Utilities only has one observation witha  different value. Lets remove it and see if it works. Probably not enough degrees of freedom for the estimation.
+
+all_regression <- lm(y ~ ., data = all.data[, -9])
+
+# Hooray! Ok lets use Akaike stepwise regression front + back
+# library(MASS)
+?stepAIC
+test.step <- stepAIC(all_regression, direction = "both")
+
+# Error message relates to stepAIC notes : "The model fitting must apply the models to the same dataset. This may be a problem if there are missing values and an na.action other than na.fail is used (as is the default in R). We suggest you remove the missing values first."
+
+test.step <- stepAIC(all_regression, direction = "both", na.fail = TRUE)
 
 # everything below I jsut took from some of my other scripts, havent changed anything yet
 
