@@ -398,6 +398,17 @@ trnCtrl.lmAIC <- trainControl(
   # search = "random"
 )
 
+
+quickMet <- function(mod = NULL){
+  print(mod)
+  densityplot(mod, pch = "|")
+  # fit.BTlin$finalModel
+  v.imp <- varImp(fit.BTlin)
+  print(v.imp)
+  plot(v.imp)
+}
+
+
 # mod 1 quickie
 fit.lm <- train(y ~ .,
                 data = dat.train[1:30,],
@@ -405,6 +416,7 @@ fit.lm <- train(y ~ .,
                 trControl = trnCtrl.lmAIC,
                 metric = "RMSE"
 )
+quickMet(fit.lm)
 
 # mod 2 quickie
 fit.lmAIC <- train(y ~ .,
@@ -413,6 +425,7 @@ fit.lmAIC <- train(y ~ .,
                    trControl = trnCtrl.lmAIC,
                    verbose = T
 )
+quickMet(fit.lmAIC)
 
 # Now see how easy a rf for example would be to adapt here to an ensembles of GLMs
 fit.rGLM <- train(y ~ .,
@@ -421,23 +434,23 @@ fit.rGLM <- train(y ~ .,
                   trControl = trnCtrl.lmAIC,
                   verbose = T
 )
+quickMet(fit.rGLM)
 
 # or a grad boosted tree
-fit.rGLM <- train(y ~ .,
-                  data = dat.train[1:30,],
+fit.BTlin <- train(y ~ .,
+                  data = dat.train,
                   method = "xgbLinear",
                   trControl = trnCtrl.lmAIC,
                   verbose = T,
                   tuneLength = 2
 )
+quickMet(fit.BTlin)
 
 obs more tuning and settings required and such but you get the idea
 
 
-fit.rGLM
-densityplot(fit.rGLM, pch = "|")
-fit.rGLM$finalModel
-# varImp(fit.rGLM$finalModel, scale = FALSE)
+
+
 
 wont work as havent manipulated dat.val as we did dat.train
 # predict(fit.rGLM, dat.val)
