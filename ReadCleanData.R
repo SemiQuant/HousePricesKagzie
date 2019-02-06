@@ -172,7 +172,16 @@ ml.train.rec1 <- recipe( ~ ., data = dat.train) %>%
 
 train_rec1 <- prep(ml.train.rec1, training = dat.train)
 
-dat.train <- bake(train_rec1, new_data = dat.train)
+dat.train.trans <- bake(train_rec1, new_data = dat.train)
+
+
+check_inf_na(dat.train.trans)
+hmm, should have checked data before this.. hence the
+
+dat.train[colnames(dat.train)%in%names(check_inf_na(dat.train.trans))]
+
+
+dat.train <- dat.train.trans[!colnames(dat.train.trans)%in%names(check_inf_na(dat.train.trans))]
 
 # APPLY TO CV AND TRAIN
 # dat.val <- bake(train_rec1, new_data = dat.val)
@@ -180,14 +189,6 @@ dat.train <- bake(train_rec1, new_data = dat.train)
 
 
 ##################
-
-
-
-##########################
-## Exploratory Analysis ##
-
-see below code, we need to look at whats there and what to make etc and what to remove
-##########################
 
 
 #########################
@@ -198,6 +199,38 @@ dat.train <- dat.train %>% mutate(YrOld = YrSold - YearBuilt,
 # APPLY TO CV AND TRAIN
 
 #########################
+
+
+
+##########################
+## Exploratory Analysis ##
+# Identifying Correlated Predictors
+require(corrplot)
+dat.train.mat <- data.matrix(dat.train)
+dat.train.cor <- cor(dat.train.mat)
+# corrplot.mixed(dat.train.cor, lower.col = "black", number.cex = .7)
+
+
+# Zero- and Near Zero-Variance Predictors - will have to refine this
+nzv <- nearZeroVar(dat.train)
+
+dat.train <- dat.train[!colnames(dat.train)%in%colnames(dat.train)[nzv]]
+
+why dat.train[!nzv] not work??
+
+# Linear Dependencies
+# QR decomposition of a matrix to enumerate sets of linear combinations (if they exist)
+comboInfo <- findLinearCombos(dat.train)
+comboInfo
+
+# dat.train[!comboInfo$remove]
+dat.train <- dat.train[!colnames(dat.train)%in%colnames(comboInfo$remove)[nzv]]
+
+
+##########################
+
+
+
 
 
 
@@ -270,14 +303,22 @@ dim(dat.train)
 
 # Probably not enough degrees of freedom for the estimation.
 ?lm
-all_regression <- lm(y ~ ., data = all.data[, -9], na.action = na.omit)
+all_regression <- lm(y ~ ., data = dat.train, na.action = na.fail)
 
 # Hooray! Ok lets use Akaike stepwise regression front + back
 
 # ?stepAIC
 test.step <- stepAIC(all_regression, direction = "both")
 
-# Error message relates to stepAIC notes : "The model fitting must apply the models to the same dataset. This may be a problem if there are missing values and an na.action other than na.fail is used (as is the default in R). We suggest you remove the missing values first."
+# so you can do this with bootstrapping, more robust but still not a great method
+require(bootStepAIC)
+boot.stepAIC(all_regression, dat.train, B = 100, alpha = 0.05, direction = "both",  k = 2, verbose = T)
+
+
+# Error message relates to stepAIC notes :
+# "The model fitting must apply the models to the same dataset.
+# This may be a problem if there are missing values and an na.action other than na.fail
+# is used (as is the default in R). We suggest you remove the missing values first."
 
 test.step <- stepAIC(all_regression, direction = "both", na.fail = TRUE)
 
