@@ -204,6 +204,23 @@ dat.train <- dat.train %>% mutate(YrOld = YrSold - YearBuilt,
 
 ##########################
 ## Exploratory Analysis ##
+
+##########################
+## Exploratory Analysis ##
+# require(caret)
+# these are supposed to be ugly and quick
+
+# feat plot
+featurePlot(x = dat.train[,1:4],
+            y = y.train,
+            # plot = "pairs",
+            # plot = "ellipse",
+            # plot = "density",
+            # plot = "scatter",
+            auto.key = list(columns = 3)
+)
+
+
 # Identifying Correlated Predictors
 require(corrplot)
 dat.train.mat <- data.matrix(dat.train)
@@ -341,6 +358,64 @@ View(all.data.nona[c(7, 91, 192), ])
 
 
 
+
+
+
+
+
+
+
+# caret implementation of below
+set.seed(1987)
+trnCtrl.lmAIC <- trainControl(
+  method = "cv", ## CV #methods = "boot", "cv", "LOOCV", "LGOCV", "repeatedcv", "timeslice", "none" and "oob"
+  number = 10, ## 10 folds
+  # repeats = 10,## repeated ten times
+  verbose = F,
+  allowParallel = T
+  # search = "random"
+)
+
+# mod 1 quickie
+fit.lm <- train(y ~ .,
+                data = dat.train[1:30,],
+                method = "lm",
+                trControl = trnCtrl.lmAIC,
+                metric = "RMSE"
+)
+
+# mod 2 quickie
+fit.lmAIC <- train(y ~ .,
+                   data = dat.train[1:30,],
+                   method = "glmStepAIC",
+                   trControl = trnCtrl.lmAIC,
+                   verbose = T
+)
+
+# Now see how easy a rf for example would be to adapt here to an ensembles of GLMs
+fit.rGLM <- train(y ~ .,
+                  data = dat.train[1:30,],
+                  method = "randomGLM",
+                  trControl = trnCtrl.lmAIC,
+                  verbose = T
+)
+
+# or a grad boosted tree
+fit.rGLM <- train(y ~ .,
+                  data = dat.train[1:30,],
+                  method = "xgbLinear",
+                  trControl = trnCtrl.lmAIC,
+                  verbose = T,
+                  tuneLength = 2
+)
+
+obs more tuning and settings required and such but you get the idea
+
+
+fit.rGLM
+densityplot(fit.rGLM, pch = "|")
+fit.rGLM$finalModel
+# varImp(fit.rGLM$finalModel, scale = FALSE)
 
 
 
