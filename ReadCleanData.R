@@ -21,15 +21,27 @@ dat.test <- read.csv("data/test.csv")
 str(dat.train)
 str(dat.test)
 
+
+
+# if we going to use some data for holdout - didnt realize the forst time that test was the predict data
+# we can also only do everything to the test data and then use the cv only for final models eval
+# can actually split into 3 if we want, training testing and validation sets
+set.seed(1987)
+keep <- createDataPartition(y = dat.train$SalePrice, p = 0.80, list = FALSE, times = 1)
+dat.val <- dat.train[-keep,]
+dat.train <- dat.train[-keep,]
+
+# So anything we do to test set, we have to store to apply to the val set. Like scaling, imputaions etc.
+
+
 # figure how to read this in
 # system("cat data/data_description.txt")
 # how we read this file in nice? idk what format it is..
 
 # Is this what you mean? I think the best we can do is read as csv and the format wide if we want?
-data_description <- read.csv("D:/Research/R learning/Kaggle/data/data_description.txt", stringsAsFactors = FALSE)
-
-
-# head(read.csv("data/sample_submission.csv"))
+# We already in the folder so dont use full paths as they wont work accross computers...
+# aslo no, ugly :p
+data_description <- read.csv("data/data_description.txt", stringsAsFactors = FALSE)
 colnames(dat.train)[!colnames(dat.train)%in%colnames(dat.test)]
 y.train <- dat.train$SalePrice
 dat.train <- dat.train[colnames(dat.train)!="SalePrice"]
@@ -38,7 +50,6 @@ table(colnames(dat.train)%in%colnames(dat.test))
 
 ################
 ## Misingness ##
-
 # require(tidyverse)
 missing <- dat.train %>%
   select_if(function(x) any(is.na(x)))
@@ -51,6 +62,9 @@ aggr(missing, numbers = TRUE, prop = c(TRUE, FALSE))
     summarise_each(funs(sum(is.na(.))))
 )
 
+# drop poolQC as none in train set
+dat.train <- dat.train[!colnames(dat.train)=="PoolQC"]
+
 # Alley
 # system("grep -A 5 Alley data/data_description.txt")
 # looks like the missing ally means none, so lets change it to "none" for now
@@ -60,13 +74,9 @@ aggr(missing, numbers = TRUE, prop = c(TRUE, FALSE))
 # system("grep NA data/data_description.txt")
 
 # Instead of being super fancy:
-View(data_description[[1]][grep("NA", data_description[[1]])])
+# ok, but calling view when you keep re-runing code is annoying :p
+# View(data_description[[1]][grep("NA", data_description[[1]])])
 
-
-# so all missing that are factor are none
-# missing <- dat.train %>%
-#   select_if(function(x) any(is.na(x)))%>%
-#   select_if(function(x) is.factor(x))
 
 missing <- as.data.frame(
   dat.train %>%
@@ -74,19 +84,16 @@ missing <- as.data.frame(
     apply(., 2, function(y){
       recode_factor(y, .missing = "None")})
 )
-
+# i dont like convertinf to matrix then back to data frame. strange things can happen. Would rather have more or uglier code and get round this.
 dat.train <- dat.train[!colnames(dat.train)%in%colnames(missing)]
-
 #think its in the same orde, bas code you can clean :)
 dat.train <- bind_cols(dat.train, data.frame(missing))
-
 
 # these are truly missing?
 colnames(dat.train %>%
            select_if(function(x) any(is.na(x))))
 
 # Lets check
-
 apply(dat.train %>%
         select_if(function(x) {any(is.na(x))})
       , 2, min, na.rm = TRUE)
@@ -107,19 +114,13 @@ identical(
 table(is.na(dat.train$GarageYrBlt), dat.train$GarageCars==0)
 #so this isnt there as they is no garage
 
-# system("grep LotFrontage data/data_description.txt")
-# table(lotFront = is.na(dat.train$LotFrontage), lotArea = dat.train$LotArea>0)
-# ah, one truley missing! Lets impute this later
-# Nope, lot area doesn't need frontage
-
-
 # system("grep Mas data/data_description.txt")
 table(is.na(dat.train$MasVnrArea), dat.train$MasVnrType)
 
 
 # But why only 8 out of 864 have missing values? surely these should be zero if masonry veneer type is "none"?
-
-View(dat.train$MasVnrArea[dat.train$MasVnrType == "None"])
+# View(dat.train$MasVnrArea[dat.train$MasVnrType == "None"])
+table(dat.train$MasVnrArea[dat.train$MasVnrType == "None"])
 
 # Ok very confusing. All zero except for the NAs and like 5 weird outliers...
 
@@ -127,35 +128,86 @@ aggr(dat.train %>%
        select_if(function(x) any(is.na(x))),
      numbers = TRUE, prop = c(TRUE, FALSE))
 
-# Can we delete the imputations?
-# Also should we make NA LotFrontage 0?
-# What should we do about Mason Veneer Area? Surely if type is none then area should be none? Or does that mean there is allocated space for mason veneer that's not used? like an untiled bathroom that needs tiles?
+# ok, so still na's, we shoudl fix later
 
-# # so we will impute LotFrontage
-# # GarageYrBlt and MasVnrArea must be dealt with but not imputed
-#
-# #something like this - thinking just using the Lot data for the lot imputation?
-# # require(mice)
-# methods(mice)
-# tempData <- mice(dat.train[grepl("Lot", colnames(dat.train))], m=5, maxit=50, meth='cart', seed=1987)
-# summary(tempData)
-# densityplot(tempData)
-# stripplot(tempData, pch = 20, cex = 1.2)
-#
-# completedData <- complete(tempData, 2)
-# table(is.na(completedData))
-# dim(completedData)
-#
-# dat.train$LotFrontage <- completedData$LotFrontage
-#
-#
-# aggr(dat.train %>%
-#        select_if(function(x) any(is.na(x))),
-#      numbers = TRUE, prop = c(TRUE, FALSE))
-#
-# dat.train <- dat.train[-c(1)]
+# dat.train$LotFrontage[is.na(dat.train$LotFrontage)] <- 0
+dat.train$LotFrontage <- replace_na(dat.train$LotFrontage, 0)
+dat.train$MasVnrArea <- replace_na(dat.train$MasVnrArea, 0)
 
-################
+
+
+
+##################
+## Make Dummies ##
+check_inf_na <- function(dat.in){
+  dat.in %>%
+    select_if(function(x) any(is.infinite(x))) %>%
+    summarise_all(funs(sum(is.infinite(.))))
+  dat.in %>%
+    select_if(function(x) any(is.na(x))) %>%
+    summarise_all(funs(sum(is.na(.))))
+}
+check_inf_na(dat.train)
+
+# remove id
+rownames(dat.train) <- dat.train$Id
+dat.train <- dat.train[-c(1)]
+
+
+require(recipes)
+ml.train.rec1 <- recipe( ~ ., data = dat.train) %>%
+  # add an interaction term
+  step_interact( ~ OverallQual:YearBuilt) %>%
+  # make all factors dummies, can make better later (i say that a lot)
+  step_dummy(all_predictors(), -all_numeric()) %>%
+  #scale and center
+  step_center(all_numeric()) %>%
+  step_scale(all_numeric())
+
+train_rec1 <- prep(ml.train.rec1, training = dat.train)
+
+dat.train <- bake(train_rec1, new_data = dat.train)
+
+# APPLY TO CV AND TRAIN
+# dat.val <- bake(train_rec1, new_data = dat.val)
+# dat.test <- bake(train_rec1, new_data = dat.test)
+
+
+##################
+
+
+
+##########################
+## Exploratory Analysis ##
+
+see below code, we need to look at whats there and what to make etc and what to remove
+##########################
+
+
+#########################
+## Feature Engineering ##
+dat.train <- dat.train %>% mutate(YrOld = YrSold - YearBuilt,
+                                  YrOldReno = YrSold - YearRemodAdd,
+                                  YrGar = YrSold - GarageYrBlt)
+# APPLY TO CV AND TRAIN
+
+#########################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+I feel you jumped into this before truly considering the data, just want to do the fun bits huh?
+
 
 # Dave's exploratory data analysis
 # Lets first look at Y variable.
