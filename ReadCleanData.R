@@ -308,51 +308,42 @@ all_regression <- lm(y ~ ., data = dat.train, na.action = na.fail)
 # Hooray! Ok lets use Akaike stepwise regression front + back
 
 # ?stepAIC
-test.step <- stepAIC(all_regression, direction = "both")
+test.step <- stepAIC(all_regression, direction = "both", na.fail = TRUE)
 
 # so you can do this with bootstrapping, more robust but still not a great method
 require(bootStepAIC)
 boot.stepAIC(all_regression, dat.train, B = 100, alpha = 0.05, direction = "both",  k = 2, verbose = T)
 
 
-# Error message relates to stepAIC notes :
-# "The model fitting must apply the models to the same dataset.
-# This may be a problem if there are missing values and an na.action other than na.fail
-# is used (as is the default in R). We suggest you remove the missing values first."
-
-test.step <- stepAIC(all_regression, direction = "both", na.fail = TRUE)
-
-# Ok I'm just going to exclude the variables with NA from the regression for now
-
-all.data.nona <- all.data[ ,!unlist(lapply(all.data, function(x){any(is.na(x))}))]
-
-all_regression.nona <- lm(y ~ ., data = all.data.nona)
-
-test.step.nona <- stepAIC(all_regression.nona, direction = "both")
-
-summary(test.step.nona)
+summary(test.step)
 par(mfrow = c(2, 2))
-plot(test.step.nona)
+plot(test.step)
 
 # Look like we have two major outliers that are impacting the model. 524 and 826.
-View(all.data.nona[c(524, 826), ])
+View(dat.train[c(208, 180), ])
 
 # Lets look at the transformed data
-all.data.log <- cbind(y = log(y.train), dat.train[ ,-1])
-all.data.log.nona <- all.data.log[ ,!unlist(lapply(all.data.log, function(x){any(is.na(x))}))]
-all_regression.log.nona <- lm(y ~ ., data = all.data.log.nona)
-test.step.log.nona <- stepAIC(all_regression.log.nona, direction = "both")
+all.data.log <- cbind(y = log(y.train), dat.train)
+# all.data.log.nona <- all.data.log[ ,!unlist(lapply(all.data.log, function(x){any(is.na(x))}))]
+all.data.log.nona <- lm(y ~ ., data = all.data.log)
+test.step.log.nona <- stepAIC(all.data.log.nona, direction = "both")
 summary(test.step.log.nona)
 plot(test.step.log.nona)
 
 # Outliers dont change much. except 1325 is replaced by 463 in plot 1. 692 is replaced by 463 in plot 2 and 3 and 11893 is replaced by better fitting 89 in plot 4.
-View(all.data.nona[c(463, 524, 826), ])
+View(all.data.nona[c(7, 91, 192), ])
 
 # surprisingly none of the outliers are the one house without all public utilities...
 
 # before we think about removing the outliers, lets try address over-fitting using a cross-validation model
 
 # Also need to try cross validation models or LASSO regression from glmnet package.
+
+
+
+
+
+
 
 # install.packages("DAAG")
 library(DAAG)
