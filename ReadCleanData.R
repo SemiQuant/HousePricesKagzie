@@ -1,3 +1,4 @@
+# rm(list = ls())
 # Load packages and set some things up #
 require(doParallel)
 set.seed(1987)
@@ -9,7 +10,8 @@ require(VIM)
 require(corrplot)
 require(mice)
 require(caret)
-
+library(moments)
+library(MASS)
 
 ##################
 ## read in data ##
@@ -167,7 +169,7 @@ hist(log(y.train), plot = TRUE)
 density_logy <- density(log(y.train))
 plot(density_logy)
 
-?ks.test
+# ?ks.test
 # Ok looks much better. Lets test for normality. P-Value will tell us the probability that this data comes from a normal distribution.
 
 shapiro.test(log(y.train))
@@ -175,7 +177,6 @@ shapiro.test(log(y.train))
 # Ok so not normal...
 
 # Lets look at skewness and kurtosis stats:
-# library(moments)
 
 skewness(log(y.train))
 kurtosis(log(y.train))
@@ -199,17 +200,67 @@ univariate_lm
 
 # They all seem to run fine as univariate regressions...
 # Except Utilities only has one observation witha  different value. Lets remove it and see if it works. Probably not enough degrees of freedom for the estimation.
-
-all_regression <- lm(y ~ ., data = all.data[, -9])
+?lm
+all_regression <- lm(y ~ ., data = all.data[, -9], na.action = na.omit)
 
 # Hooray! Ok lets use Akaike stepwise regression front + back
-# library(MASS)
-?stepAIC
+
+# ?stepAIC
 test.step <- stepAIC(all_regression, direction = "both")
 
 # Error message relates to stepAIC notes : "The model fitting must apply the models to the same dataset. This may be a problem if there are missing values and an na.action other than na.fail is used (as is the default in R). We suggest you remove the missing values first."
 
 test.step <- stepAIC(all_regression, direction = "both", na.fail = TRUE)
+
+# Ok I'm just going to exclude the variables with NA from the regression for now
+
+all.data.nona <- all.data[ ,!unlist(lapply(all.data, function(x){any(is.na(x))}))]
+
+all_regression.nona <- lm(y ~ ., data = all.data.nona)
+
+test.step.nona <- stepAIC(all_regression.nona, direction = "both")
+
+summary(test.step.nona)
+par(mfrow = c(2, 2))
+plot(test.step.nona)
+
+# Look like we have two major outliers that are impacting the model. 524 and 826.
+View(all.data.nona[c(524, 826), ])
+
+# Lets look at the transformed data
+all.data.log <- cbind(y = log(y.train), dat.train[ ,-1])
+all.data.log.nona <- all.data.log[ ,!unlist(lapply(all.data.log, function(x){any(is.na(x))}))]
+all_regression.log.nona <- lm(y ~ ., data = all.data.log.nona)
+test.step.log.nona <- stepAIC(all_regression.log.nona, direction = "both")
+summary(test.step.log.nona)
+plot(test.step.log.nona)
+
+# Outliers dont change much. except 1325 is replaced by 463 in plot 1. 692 is replaced by 463 in plot 2 and 3 and 11893 is replaced by better fitting 89 in plot 4.
+View(all.data.nona[c(463, 524, 826), ])
+
+# surprisingly none of the outliers are the one house without all public utilities...
+
+# before we think about removing the outliers, lets try address over-fitting using a cross-validation model
+
+# Also need to try cross validation models or LASSO regression from glmnet package.
+
+# install.packages("DAAG")
+library(DAAG)
+?cv.lm
+str(test.step.log.nona)
+cv.lm(data = all.data.log.nona, form.lm = y ~ MSZoning + LotArea + Street + LandContour +
+        LotConfig + LandSlope + Neighborhood + Condition1 + Condition2 +
+        BldgType + OverallQual + OverallCond + YearBuilt + YearRemodAdd +
+        RoofStyle + RoofMatl + Exterior1st + ExterCond + Foundation +
+        BsmtFinSF1 + BsmtFinSF2 + BsmtUnfSF + Heating + HeatingQC +
+        CentralAir + X1stFlrSF + X2ndFlrSF + LowQualFinSF + BsmtFullBath +
+        FullBath + HalfBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd +
+        Functional + Fireplaces + GarageCars + GarageArea + WoodDeckSF +
+        EnclosedPorch + X3SsnPorch + ScreenPorch + PoolArea + SaleType +
+        SaleCondition + BsmtQual + BsmtCond + BsmtExposure + GarageQual +
+        GarageCond + PoolQC)
+
+
 
 # everything below I jsut took from some of my other scripts, havent changed anything yet
 
