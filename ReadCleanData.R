@@ -128,11 +128,17 @@ aggr(dat.train %>%
        select_if(function(x) any(is.na(x))),
      numbers = TRUE, prop = c(TRUE, FALSE))
 
-# ok, so still na's, we shoudl fix later
+
+
+# ok, so still na's, we shoudl fix later - please note, this is jsut so i can look at the rest of the code, this is not what i want to do
 
 # dat.train$LotFrontage[is.na(dat.train$LotFrontage)] <- 0
 dat.train$LotFrontage <- replace_na(dat.train$LotFrontage, 0)
 dat.train$MasVnrArea <- replace_na(dat.train$MasVnrArea, 0)
+dat.train$GarageYrBlt <- replace_na(dat.train$MasVnrArea, median(dat.train$GarageYrBlt))
+
+
+
 
 
 
@@ -225,6 +231,7 @@ plot(density_logy)
 # Ok looks much better. Lets test for normality. P-Value will tell us the probability that this data comes from a normal distribution.
 
 shapiro.test(log(y.train))
+#gay, this test is gay
 
 # Ok so not normal...
 
@@ -232,26 +239,36 @@ shapiro.test(log(y.train))
 
 skewness(log(y.train))
 kurtosis(log(y.train))
+# nice.
 
-# Skewness seems like less of a problem than kurtosis. skew should be 0 kurt should be 3. We can look at box-cox transform or ignore because its at least approx normal and review residuals or regression.
+# Skewness seems like less of a problem than kurtosis.
+# skew should be 0 kurt should be 3. We can look at box-cox transform or ignore because its at
+# least approx normal and review residuals or regression.
 
 # Lets see what a basic linear model from stepwise regression looks like:
 
 # library(leaps)
 
-all.data <- cbind(y = y.train, dat.train[ ,-1])
+dat.train$y <- y.train
 
-lm(y ~ ., data = all.data)
+#yeah, defult is na.fail
+#you didnt clean your data, then you throw it out below!
+length(complete.cases(dat.train))
+dim(dat.train)
 
-# Something wrong with one or more variables. Lets find it.
-
-univariate_lm <- lapply(dat.train[, -1], function(x){
-  lm(y.train ~ x)
-})
-univariate_lm
+# # Something wrong with one or more variables. Lets find it.
+#
+# univariate_lm <- lapply(dat.train, function(x){
+#   lm(y.train ~ x)
+# })
+# univariate_lm
 
 # They all seem to run fine as univariate regressions...
-# Except Utilities only has one observation witha  different value. Lets remove it and see if it works. Probably not enough degrees of freedom for the estimation.
+# Except Utilities only has one observation witha  different value. Lets remove it and see if it works.
+
+# if you jsut did your data pre-processing...
+
+# Probably not enough degrees of freedom for the estimation.
 ?lm
 all_regression <- lm(y ~ ., data = all.data[, -9], na.action = na.omit)
 
