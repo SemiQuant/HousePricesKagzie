@@ -417,6 +417,8 @@ densityplot(fit.rGLM, pch = "|")
 fit.rGLM$finalModel
 # varImp(fit.rGLM$finalModel, scale = FALSE)
 
+wont work as havent manipulated dat.val as we did dat.train
+# predict(fit.rGLM, dat.val)
 
 
 
