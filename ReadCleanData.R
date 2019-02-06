@@ -248,21 +248,52 @@ View(all.data.nona[c(463, 524, 826), ])
 library(DAAG)
 ?cv.lm
 str(test.step.log.nona)
-cv.lm(data = all.data.log.nona, form.lm = y ~ MSZoning + LotArea + Street + LandContour +
-        LotConfig + LandSlope + Neighborhood + Condition1 + Condition2 +
-        BldgType + OverallQual + OverallCond + YearBuilt + YearRemodAdd +
-        RoofStyle + RoofMatl + Exterior1st + ExterCond + Foundation +
-        BsmtFinSF1 + BsmtFinSF2 + BsmtUnfSF + Heating + HeatingQC +
-        CentralAir + X1stFlrSF + X2ndFlrSF + LowQualFinSF + BsmtFullBath +
-        FullBath + HalfBath + KitchenAbvGr + KitchenQual + TotRmsAbvGrd +
-        Functional + Fireplaces + GarageCars + GarageArea + WoodDeckSF +
-        EnclosedPorch + X3SsnPorch + ScreenPorch + PoolArea + SaleType +
-        SaleCondition + BsmtQual + BsmtCond + BsmtExposure + GarageQual +
-        GarageCond + PoolQC)
+cv.lm(data = all.data.log.nona[, -8], form.lm = y ~ .)
+str(all.data.log.nona[, -8])
+# Is this because the condition2 factor levels names are the same as condition1?
+levels(all.data.log.nona$Condition1)
+levels(all.data.log.nona$Condition2)
+# But this can't be a problem because lots of factors have the same name...
+View(data.frame(all.data.log.nona$Condition1, all.data.log.nona$Condition2))
+
+# try remove cond 2
+cv.lm(data = all.data.log.nona[, -c(8, 13)], form.lm = y ~ .)
+# Now same problem with roofstyle?
+
+cross_validate_3 <- cv.lm(data = all.data.log.nona[, -c(8, 13, 20, 21, 22, 23, 25, 31, 32, 46, 60, 65, 69, 74, 77)], form.lm = y ~ ., m = 3)
+str(cross_validate_3)
+which(colnames(all.data.log.nona) == "GarageCond")
+# Ok so if i remove all factors with a dominant level it works. Now lets try fix this by replacing those factors with corresponding dummy variables.
 
 
 
-# everything below I jsut took from some of my other scripts, havent changed anything yet
+# Solution
+# https://stackoverflow.com/questions/28274040/cvlm-with-categorical-variables-factor-has-new-levels
+# This is the typical problem of having different levels in the factor variables between the folds in the cross validation. The algorithm creates dummy variables for the training set but the test set has different levels to the training set and thus the error. The solution is to create the dummy variables on your own and then use the CVlm function:
+
+
+
+#   Solution
+#
+# dummy_LW <- model.matrix(~LW, data=df)[,-1]    #dummy for LW
+# dummy_CWT <- model.matrix(~CWT, data=df)[,-1]  #dummies for CWT
+# df <- Filter(is.numeric,df)                    #exclude LW and CWT from original dataset
+# df <- cbind(df,dummy_LW,dummy_CWT)             #add the dummies instead
+# Then run the model as you did (make sure you add the new variable names):
+#
+#   model<-  lm(formula = o3 ~ LagO3 + Z + RH + ST + TC + Tmx + dummy_LW +
+#                 CWTC + CWTE + CWTN + CWTNE + CWTNW + CWTS +
+#                 CWTSW + CWTU + CWTW,
+#               data = df, na.action = na.exclude)
+# cvlm.mod <- CVlm(na.omit(data),model,m=10)
+# Unfortunately, I cannot test the above as your code has too few rows to work (only 6 rows are not enough) but the above will work.
+#
+# A few words about model.matrix:
+#
+#   It creates dummy variables for categorical data. By default is leaves one level out as the reference level (as it should), because you will have a correlation of 1 between dummies otherwise. [,-1] in the above code just removes the intercept which is an unneeded column of 1s.
+
+
+# everything below I just took from some of my other scripts, havent changed anything yet
 
 
 
