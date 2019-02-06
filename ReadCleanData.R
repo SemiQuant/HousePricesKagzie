@@ -135,8 +135,24 @@ aggr(dat.train %>%
 # dat.train$LotFrontage[is.na(dat.train$LotFrontage)] <- 0
 dat.train$LotFrontage <- replace_na(dat.train$LotFrontage, 0)
 dat.train$MasVnrArea <- replace_na(dat.train$MasVnrArea, 0)
-dat.train$GarageYrBlt <- replace_na(dat.train$MasVnrArea, median(dat.train$GarageYrBlt))
 
+
+# I dont really know how to deal with this (also some models allow na's so dont "have too")
+dat.train$GarageYrBlt <- replace_na(dat.train$MasVnrArea, median(dat.train$GarageYrBlt))
+table(dat.train$GarageType, dat.train$GarageYrBlt, useNA = "a")
+table(dat.train$YearBuilt, dat.train$GarageYrBlt, useNA = "a")
+plot(dat.train$YearBuilt, dat.train$GarageYrBlt)
+plot(dat.train$YearRemodAdd, dat.train$GarageYrBlt)
+table(dat.train$YearRemodAdd == dat.train$YearBuilt, useNA = "a")
+hmm <- ifelse(dat.train$YearRemodAdd != dat.train$YearBuilt,
+              dat.train$YearRemodAdd,
+              dat.train$YearBuilt)
+plot(hmm, dat.train$GarageYrBlt)
+points(x = ifelse(is.na(dat.train$GarageYrBlt), dat.train$YearBuilt, NA), y = rep(1930, nrow(dat.train)) ,
+       col = "red", pch = 23)
+# jsut make it year built? or 0?
+# make seperate variable for if garage remodeled?
+dat.train$GarageYrBlt <- replace_na(dat.train$GarageYrBlt, 0)
 
 
 
@@ -196,6 +212,12 @@ dat.train <- dat.train.trans[!colnames(dat.train.trans)%in%names(check_inf_na(da
 dat.train <- dat.train %>% mutate(YrOld = YrSold - YearBuilt,
                                   YrOldReno = YrSold - YearRemodAdd,
                                   YrGar = YrSold - GarageYrBlt)
+
+dat.train$remod <- as.factor(ifelse(dat.train$YearRemodAdd!=dat.train$YearBuilt, 1, 0))
+dat.train$remod.gar <-  as.factor(ifelse(dat.train$YearRemodAdd < dat.train$GarageYrBlt, 1, 0))
+
+
+
 # APPLY TO CV AND TRAIN
 
 #########################
@@ -426,7 +448,7 @@ wont work as havent manipulated dat.val as we did dat.train
 library(DAAG)
 ?cv.lm
 str(test.step.log.nona)
-cv.lm(data = all.data.log.nona[, -8], form.lm = y ~ .)
+cv.lm(data = all.data.log.nona, form.lm = y ~ .)
 str(all.data.log.nona[, -8])
 # Is this because the condition2 factor levels names are the same as condition1?
 levels(all.data.log.nona$Condition1)
