@@ -63,7 +63,10 @@ aggr(missing, numbers = TRUE, prop = c(TRUE, FALSE))
 )
 
 # drop poolQC as none in train set
+table(dat.train$PoolArea, dat.train$PoolQC, useNA = "a")
 dat.train <- dat.train[!colnames(dat.train)=="PoolQC"]
+
+
 
 # Alley
 # system("grep -A 5 Alley data/data_description.txt")
@@ -268,8 +271,8 @@ dat.train <- dat.train[!colnames(dat.train)%in%colnames(comboInfo$remove)[nzv]]
 
 ##########################
 
-
-
+dat.train$y <- y.train
+save(dat.train, file = "tmp/dat.train.R")
 
 
 
