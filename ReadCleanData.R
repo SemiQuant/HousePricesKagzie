@@ -22,7 +22,6 @@ str(dat.train)
 str(dat.test)
 
 
-
 # if we going to use some data for holdout - didnt realize the forst time that test was the predict data
 # we can also only do everything to the test data and then use the cv only for final models eval
 # can actually split into 3 if we want, training testing and validation sets
@@ -48,6 +47,7 @@ dat.train <- dat.train[colnames(dat.train)!="SalePrice"]
 table(colnames(dat.train)%in%colnames(dat.test))
 ##################
 
+
 ################
 ## Misingness ##
 # require(tidyverse)
@@ -67,7 +67,6 @@ table(dat.train$PoolArea, dat.train$PoolQC, useNA = "a")
 dat.train <- dat.train[!colnames(dat.train)=="PoolQC"]
 
 
-
 # Alley
 # system("grep -A 5 Alley data/data_description.txt")
 # looks like the missing ally means none, so lets change it to "none" for now
@@ -79,7 +78,6 @@ dat.train <- dat.train[!colnames(dat.train)=="PoolQC"]
 # Instead of being super fancy:
 # ok, but calling view when you keep re-runing code is annoying :p
 # View(data_description[[1]][grep("NA", data_description[[1]])])
-
 
 missing <- as.data.frame(
   dat.train %>%
@@ -132,6 +130,7 @@ aggr(dat.train %>%
      numbers = TRUE, prop = c(TRUE, FALSE))
 
 
+# aggr(dat.train)
 
 # ok, so still na's, we shoudl fix later - please note, this is jsut so i can look at the rest of the code, this is not what i want to do
 
@@ -160,8 +159,6 @@ dat.train$GarageYrBlt <- replace_na(dat.train$GarageYrBlt, 0)
 
 
 
-
-
 ##################
 ## Make Dummies ##
 check_inf_na <- function(dat.in){
@@ -184,7 +181,7 @@ ml.train.rec1 <- recipe( ~ ., data = dat.train) %>%
   # add an interaction term
   step_interact( ~ OverallQual:YearBuilt) %>%
   # make all factors dummies, can make better later (i say that a lot)
-  step_dummy(all_predictors(), -all_numeric()) %>%
+  step_dummy(all_predictors(), -all_numeric()) %>%   # this makes 1 hot encoded variabels
   #scale and center
   step_center(all_numeric()) %>%
   step_scale(all_numeric())
@@ -195,7 +192,7 @@ dat.train.trans <- bake(train_rec1, new_data = dat.train)
 
 
 check_inf_na(dat.train.trans)
-hmm, should have checked data before this.. hence the
+# hmm, should have checked data before this.. hence the
 
 dat.train[colnames(dat.train)%in%names(check_inf_na(dat.train.trans))]
 
@@ -218,17 +215,8 @@ dat.train <- dat.train %>% mutate(YrOld = YrSold - YearBuilt,
 
 dat.train$remod <- as.factor(ifelse(dat.train$YearRemodAdd!=dat.train$YearBuilt, 1, 0))
 dat.train$remod.gar <-  as.factor(ifelse(dat.train$YearRemodAdd < dat.train$GarageYrBlt, 1, 0))
-
-
-
-# APPLY TO CV AND TRAIN
-
 #########################
 
-
-
-##########################
-## Exploratory Analysis ##
 
 ##########################
 ## Exploratory Analysis ##
@@ -258,7 +246,7 @@ nzv <- nearZeroVar(dat.train)
 
 dat.train <- dat.train[!colnames(dat.train)%in%colnames(dat.train)[nzv]]
 
-why dat.train[!nzv] not work??
+# why dat.train[!nzv] not work??
 
 # Linear Dependencies
 # QR decomposition of a matrix to enumerate sets of linear combinations (if they exist)
@@ -274,3 +262,38 @@ dat.train <- dat.train[!colnames(dat.train)%in%colnames(comboInfo$remove)[nzv]]
 dat.train$y <- y.train
 save(dat.train, file = "tmp/dat.train.R")
 
+
+
+######################################
+## apply transformations to val set ##
+dat.val <- dat.val[!colnames(dat.val)=="PoolQC"]
+missing.val <- as.data.frame(
+  dat.val %>%
+    select_if(colnames(dat.val)%in%colnames(missing)) %>%
+    apply(., 2, function(y){
+      recode_factor(y, .missing = "None")})
+)
+dat.val <- dat.val[!colnames(dat.val)%in%colnames(missing.val)]
+dat.val <- bind_cols(dat.val, data.frame(missing))
+dat.val$LotFrontage <- replace_na(dat.val$LotFrontage, 0)
+dat.val$MasVnrArea <- replace_na(dat.val$MasVnrArea, 0)
+dat.val$GarageYrBlt <- replace_na(dat.val$GarageYrBlt, 0)
+
+table(is.na(missing.val))
+# thank the lord, or this woudl get more complicated
+# what we would have to do is use our training data to predict, as you cant use the test data (like we do with bake below, so that scales using the scaling learnt form the train data for example)
+# not too hard but we'll leave it for next exercise
+
+dat.val.trans <- bake(train_rec1, new_data = dat.val)
+dat.val <- dat.val %>% mutate(YrOld = YrSold - YearBuilt,
+                              YrOldReno = YrSold - YearRemodAdd,
+                              YrGar = YrSold - GarageYrBlt)
+dat.val$remod <- as.factor(ifelse(dat.val$YearRemodAdd!=dat.val$YearBuilt, 1, 0))
+dat.val$remod.gar <-  as.factor(ifelse(dat.val$YearRemodAdd < dat.val$GarageYrBlt, 1, 0))
+
+
+dat.val <- dat.val[colnames(dat.val)%in%colnames(dat.train)]
+table(colnames(dat.val)%in%colnames(dat.train))
+
+save(dat.val, file = "tmp/dat.val.R")
+######################################

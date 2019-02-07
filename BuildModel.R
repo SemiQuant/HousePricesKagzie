@@ -13,16 +13,12 @@ require(caret)
 library(moments)
 library(MASS)
 
-
-
-I feel you jumped into this before truly considering the data, just want to do the fun bits huh?
-
-
 load("tmp/dat.train.R")
+load("tmp/dat.val.R")
+y.train <- dat.train$y
 
-  # Dave's exploratory data analysis
-  # Lets first look at Y variable.
-
+# Dave's exploratory data analysis
+# Lets first look at Y variable.
 density_y <- density(y.train)
 hist(y.train, plot = TRUE)
 plot(density_y)
@@ -110,10 +106,6 @@ View(all.data.nona[c(7, 91, 192), ])
 # before we think about removing the outliers, lets try address over-fitting using a cross-validation model
 
 # Also need to try cross validation models or LASSO regression from glmnet package.
-
-
-
-
 
 
 
